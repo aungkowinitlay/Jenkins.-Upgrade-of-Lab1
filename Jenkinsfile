@@ -69,17 +69,18 @@ pipeline {
     }
 
     post {
-        always {
+    always {
+        node {
             sh """
-            docker logout
-            docker image prune -f
+                docker logout
+                docker image prune -f
             """
         }
-        success {
-            echo "Pipeline completed successfully!"
-        }
-        failure {
-            echo "Pipeline failed!"
-        }
+    }
+    success {
+        echo "Pipeline completed successfully!"
+    }
+    failure {
+        echo "Pipeline failed!"
     }
 }
