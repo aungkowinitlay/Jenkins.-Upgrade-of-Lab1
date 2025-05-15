@@ -1,4 +1,6 @@
 import pytest
+import sys
+sys.path.append('/app')  
 from app import app
 
 @pytest.fixture

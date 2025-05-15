@@ -2,7 +2,7 @@ pipeline {
     agent any 
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('DOCKERHUB_CRENDENTIALS')
+        DOCKERHUB_CREDENTIALS = credentials('DOCKERHUB_CREDENTIALS')
         BACKEND_IMAGE = 'aungkowin/my-backend:latest'
         FRONTEND_IMAGE = 'aungkowin/my-frontend:latest'
     }
@@ -33,16 +33,18 @@ pipeline {
         stage('Test Backend') {
             steps {
                 sh """
-                    docker run --rm ${BACKEND_IMAGE} pytest
+                    docker run --rm -e PYTHONPATH=/app ${BACKEND_IMAGE} pytest
                 """
             }
         }
 
         stage('Docker Login') {
             steps {
-                sh """
-                    echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
-                """
+                withCredentials([usernamePassword(credentialsId: 'DOCKERHUB_CREDENTIALS', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
+                    sh """
+                        echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
+                    """
+                }
             }
         }
 
@@ -60,7 +62,6 @@ pipeline {
                 sh """
                     docker rm -f backend-container || true
                     docker rm -f frontend-container || true
-
                     docker run -d --name backend-container -p 5000:5000 ${BACKEND_IMAGE}
                     docker run -d --name frontend-container -p 80:80 ${FRONTEND_IMAGE}
                 """
@@ -70,12 +71,10 @@ pipeline {
 
     post {
         always {
-            steps {
-                sh """
-                    docker logout
-                    docker image prune -f
-                """
-            }
+            sh """
+                docker logout
+                docker image prune -f
+            """
         }
         success {
             echo "Pipeline completed successfully!"
