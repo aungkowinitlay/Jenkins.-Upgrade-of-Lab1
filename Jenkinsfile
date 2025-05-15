@@ -70,10 +70,12 @@ pipeline {
 
     post {
         always {
-            sh """
-                docker logout
-                docker image prune -f
-            """
+            steps {
+                sh """
+                    docker logout
+                    docker image prune -f
+                """
+            }
         }
         success {
             echo "Pipeline completed successfully!"
