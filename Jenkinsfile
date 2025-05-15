@@ -1,86 +1,84 @@
 pipeline {
     agent any 
-    environment {
-        DOCKERHUB_CRENDENTIALS = crendentials ('DOCKERHUB_CRENDENTIALS')
-        BACKEND-IMAGE = aungkowin/my-backend:latest
-        FRONTEND-IMAGE = aungkowin/my-frontend:latest
-    }
-    stages {
-        stage('Checkout'){
-            steps {
-                //Checkout code from GitHub
-                
-                    git branch: 'main', url: 'https://github.com/aungkowinitlay/Jenkins.-Upgrade-of-Lab1.git'
-                
-            }
-        }
-        stage('Build Backend Image'){
-            steps{
-                //Build Backend Docker Image
-                sh """
-                docker build -t ${BACKEND-IMAGE} -f backend/Dockerfile ./backend
-                """
-            }
-        }
-        stage('Build Frontend Image'){
-            steps{
-                //Buil Frontend Docker image
-                sh """
-                docker build -t ${FRONTEND-IMAGE} -t frontend/Dockerfile ./frontend
-                """
-            }
-        }
-        stage('Test Backend'){
-            steps{
-                sh """
-                docker run --rm  ${BACKEND-IMAGE} pytest
-                """
 
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('DOCKERHUB_CRENDENTIALS')
+        BACKEND_IMAGE = 'aungkowin/my-backend:latest'
+        FRONTEND_IMAGE = 'aungkowin/my-frontend:latest'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/aungkowinitlay/Jenkins.-Upgrade-of-Lab1.git'
             }
         }
-        stage('Docker Login'){
-            steps{
-                //Docker Hub Login
-                echo $DOCKERHUB_CRENDENTIALS_PSW | docker Login -u $DOCKERHUB_CRENDENTIALS_USR --password-stdin
-            }
-        }
-        stages('Push Docker Image'){
-            steps{
+
+        stage('Build Backend Image') {
+            steps {
                 sh """
-                docker push ${BACKEND-IMAGE}
-                docker push ${FRONTEND-IMAGE}
+                docker build -t ${BACKEND_IMAGE} -f backend/Dockerfile ./backend
                 """
             }
         }
-        stage('Deploy'){
-            steps{
+
+        stage('Build Frontend Image') {
+            steps {
+                sh """
+                docker build -t ${FRONTEND_IMAGE} -f frontend/Dockerfile ./frontend
+                """
+            }
+        }
+
+        stage('Test Backend') {
+            steps {
+                sh """
+                docker run --rm ${BACKEND_IMAGE} pytest
+                """
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                sh """
+                echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
+                """
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                sh """
+                docker push ${BACKEND_IMAGE}
+                docker push ${FRONTEND_IMAGE}
+                """
+            }
+        }
+
+        stage('Deploy') {
+            steps {
                 sh """
                 docker rm -f backend-container || true
                 docker rm -f frontend-container || true
-                docker run -d --name backend-container -p 5000:5000 ${BACKEND-IMAGE}
-                docker run -d --name frontend-container -p 80:80 ${FRONTEND-IMAGE}
+
+                docker run -d --name backend-container -p 5000:5000 ${BACKEND_IMAGE}
+                docker run -d --name frontend-container -p 80:80 ${FRONTEND_IMAGE}
                 """
             }
         }
+    }
 
-    }
-}
-post {
-    always {
-        node (label: ''){
+    post {
+        always {
             sh """
-                docker logout
-                docker image prune -f
-                """
+            docker logout
+            docker image prune -f
+            """
         }
-    }
-    success {
-        node (label: ''){
+        success {
             echo "Pipeline completed successfully!"
         }
-    }
-    failure {
-        node (label: ''){
+        failure {
             echo "Pipeline failed!"
         }
     }
